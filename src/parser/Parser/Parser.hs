@@ -629,6 +629,18 @@ partitionTraitAttributes = partitionTraitAttributes' [] []
     partitionTraitAttributes' rs ms (TMethodAttribute{tmdecl}:as) =
       partitionTraitAttributes' rs (tmdecl:ms) as
 
+data AdtAttribute = AdtConsAttribute {constructor :: AdtConstructor}
+                  | AdtMethodAttribute {method :: MethodDecl}
+
+partitionAdtAttributes :: [AdtAttribute] -> ([AdtConstructor], [MethodDecl])
+partitionAdtAttributes = partitionAdtAttributes' [] []
+  where
+    partitionAdtAttributes' cs ms [] = (cs, ms)
+    partitionAdtAttributes' cs ms (AdtConsAttribute{constructor}:as) =
+      partitionAdtAttributes' (constructor:cs) ms as
+    partitionAdtAttributes' cs ms (AdtMethodAttribute{method}:as) =
+      partitionAdtAttributes' cs (method:ms) as
+
 mode :: EncParser (Type -> Type)
 mode = (reserved "linear" >> return makeLinear)
        <|>
@@ -748,10 +760,12 @@ adtDecl = do
     return $ L.IndentSome
       Nothing
       (buildAdt ameta name params)
-      constructor
+      adtAttribute
   atLevel aIndent $ reserved "end"
   return adecl
   where
+    adtAttribute = (AdtConsAttribute <$> constructor)
+                <|> (AdtMethodAttribute <$> methodDecl)
     constructor = do
       acmeta <- meta <$> getPosition
       reserved "case"
@@ -761,12 +775,16 @@ adtDecl = do
                         adtConsType name
                      ,acfields
                      }
-    buildAdt ameta name params constructors=
-      return ADT{ameta
-         ,aname = setRefNamespace emptyNamespace $
-                 adtType name params
-         ,aconstructor = constructors
-         }
+    buildAdt ameta name params attributes =
+      let
+        (constructors, methods) = partitionAdtAttributes attributes
+      in
+        return ADT{ameta
+                  ,aname = setRefNamespace emptyNamespace $
+                    adtType name params
+                  ,aconstructor = constructors
+                  ,amethods = methods
+                  }
 
 -- TODO: Allow linebreak (with indent) for trait inclusion
 classDecl :: EncParser ClassDecl
