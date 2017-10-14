@@ -1002,9 +1002,7 @@ instance Checkable Expr where
         let updateClauseType m@MatchClause{mchandler} =
                 m{mchandler = setType resultType mchandler}
             eClauses' = map updateClauseType eClauses
-        if (isFromADT argType)
-        then return $ setType resultType match {arg = eArg, clauses = eClauses', adtMatch = True}
-        else return $ setType resultType match {arg = eArg, clauses = eClauses', adtMatch = False}
+        return $ setType resultType match {arg = eArg, clauses = eClauses'}
       where
         checkForAdtExtractors arg = mapM (checkForAdtExtractor arg)
         checkForAdtExtractor matchArg p@ExtractorPattern{name, arg} = do
@@ -1257,7 +1255,7 @@ instance Checkable Expr where
                            then map (\f@Field{ftype} -> ftype) fields
                            else [unitType]
           let fieldNames = map (\f@Field{fname} -> "_enc__field_" ++ show fname) fields
-          adtClassDecl <- typecheck c
+              adtClassDecl = c
           eArg <- checkAdtPattern arg $ tupleType fieldTypes
           return $ setArrowType (arrowType [] intType) $
                    setType argty AdtExtractorPattern {emeta

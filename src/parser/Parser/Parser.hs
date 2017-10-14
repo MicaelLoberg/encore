@@ -1492,7 +1492,7 @@ expr = notFollowedBy nl >>
         return theMatch
         where
           buildMatch emeta arg matchClause =
-            return Match{emeta, arg, clauses=matchClause, adtMatch=False}
+            return Match{emeta, arg, clauses=matchClause}
 
       borrow = blockedConstruct $ do
         emeta <- meta <$> getPosition
